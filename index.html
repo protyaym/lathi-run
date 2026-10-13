@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Lathi Run: jump the barricades, duck the tear gas.">
+<style>body{margin:0;font-family:system-ui,sans-serif}img{max-width:100%}</style>
+<title>Lathi Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: a Chrome "offline" page parody — the pixel game sits where the dino would, the cartoon's hand-written error text below it. Single light look, like the paper cartoon. */
+:root {
+  --paper: #f7f6f2;
+  --ink: #262421;
+  --muted: #6e6a63;
+  --barricade: #f0c419;
+  --flag: #d33a2c;
+  --khaki: #b39a6b;
+  --white: #ffffff;
+  --font-hand: "Kalam", "Comic Sans MS", "Segoe Print", cursive;
+  --font-pixel: "Silkscreen", "Courier New", ui-monospace, monospace;
+  color-scheme: light;
+}
+[hidden] { display: none !important; }
+html, body { background: var(--paper); color: var(--ink); }
+body { font-family: var(--font-hand); }
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 20px 40px;
+  display: grid;
+  gap: 28px;
+}
+.game { display: grid; gap: 12px; }
+.stage {
+  position: relative;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.hud {
+  position: absolute;
+  top: 6px; right: 8px;
+  display: flex; gap: 12px;
+  font: 700 clamp(10px, 2.6vw, 15px)/1 var(--font-pixel);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.hud .hi { color: var(--muted); }
+.hud .blink { animation: blink 0.6s steps(2) 1; }
+@keyframes blink { 50% { opacity: 0; } }
+.banner {
+  position: absolute;
+  top: 26%; left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper);
+  font: 700 clamp(9px, 2.4vw, 13px)/1.2 var(--font-pixel);
+  letter-spacing: 0.04em;
+  padding: 5px 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pop 2.2s steps(6) forwards;
+}
+@keyframes pop {
+  0% { opacity: 0; transform: translate(-50%, 4px); }
+  12%, 80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; }
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px;
+  text-align: center;
+  pointer-events: none;
+  padding-bottom: 8%;
+}
+.ov-title {
+  margin: 0;
+  font: 700 clamp(14px, 4.4vw, 26px)/1 var(--font-pixel);
+  letter-spacing: 0.06em;
+}
+.ov-sub {
+  margin: 0;
+  font: 400 clamp(9px, 2.4vw, 13px)/1.3 var(--font-pixel);
+  color: var(--muted);
+  max-width: 34ch;
+}
+.restart { width: clamp(22px, 6vw, 34px); height: auto; margin-top: 2px; }
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+}
+.pad, .snd {
+  font: 700 15px/1 var(--font-pixel);
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 16px 10px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+.pad.jump { background: var(--barricade); }
+.pad.duck { background: var(--white); }
+.snd { background: var(--paper); font-size: 11px; padding-inline: 12px; }
+.pad.down, .pad:active, .snd:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.pad:focus-visible, .snd:focus-visible, .stage:focus-visible { outline: 3px solid var(--flag); outline-offset: 3px; }
+.keys {
+  margin: 0;
+  font: 400 11px/1.5 var(--font-pixel);
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.err { display: grid; gap: 6px; max-width: 62ch; }
+.err h1 {
+  margin: 0;
+  font: 700 clamp(2rem, 7vw, 2.8rem)/1.1 var(--font-hand);
+  text-wrap: balance;
+}
+.err .try { margin: 4px 0 0 1.6em; font-size: 1.35rem; }
+.err ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.err li {
+  font-size: 1.2rem; line-height: 1.4;
+  padding-left: 1.1em; position: relative;
+}
+.err li::before { content: "•"; position: absolute; left: 0.1em; }
+.err .code {
+  margin: 14px 0 0;
+  font: 400 clamp(12px, 3.4vw, 16px)/1.3 var(--font-pixel);
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: reduce) {
+  .banner, .hud .blink { animation-duration: 0.01s; }
+}
+</style>
+</head>
+<body>
+
+<main class="page">
+  <section class="game" aria-label="Lathi Run game">
+    <div class="stage" id="stage" tabindex="0" aria-label="Game area. Press Space to jump, Down arrow to duck.">
+      <canvas id="cv" width="300" height="110"></canvas>
+      <div class="hud" aria-live="off"><span class="hi" id="hi">HI 00056</span><span id="sc">00000</span></div>
+      <div class="overlay" id="ov">
+        <p class="ov-title" id="ovTitle">TAP TO MARCH</p>
+        <p class="ov-sub" id="ovSub">Jump the barricades. Duck the tear gas.</p>
+        <svg class="restart" id="restart" hidden viewBox="0 0 12 11" aria-hidden="true" shape-rendering="crispEdges">
+          <path fill="#262421" d="M3 0h6v1H3zM2 1h1v1H2zM9 1h1v1H9zM1 2h1v2H1zM10 2h1v1H10zM0 4h3v1H0zM11 1h1v4h-1zM8 4h3v1H8zM1 5h1v1H1zM10 5h1v2H10zM2 6h1v2H2zM9 7h1v1H9zM3 8h6v1H3z"/>
+        </svg>
+      </div>
+      <div class="banner" id="banner" hidden></div>
+    </div>
+    <div class="controls">
+      <button class="pad jump" id="bJump" type="button">▲ Jump</button>
+      <button class="pad duck" id="bDuck" type="button">▼ Duck</button>
+      <button class="snd" id="bSnd" type="button" aria-pressed="true">Sound<br>on</button>
+    </div>
+    <p class="keys">Keyboard: Space or ↑ to jump, ↓ to duck. Hold jump to leap higher. Grab the blue book for +25.</p>
+  </section>
+
+  <section class="err" aria-label="Error page">
+    <h1>No Democracy</h1>
+    <p class="try">Try:</p>
+    <ul>
+      <li>Checking if the CEC is mistakenly plugged into the BJP HQ</li>
+      <li>Reconnecting to Jantar Mantar</li>
+      <li>Asking Dilli Police if protest is allowed today (spoilers: No!)</li>
+    </ul>
+    <p class="code">ERR_CONSTITUTION_DISCONNECTED</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const cx = cv.getContext('2d');
+  cx.imageSmoothingEnabled = false;
+
+  const W = (window.innerWidth || 400) < 560 ? 250 : 320, H = 110, G = 98, PX = 52;
+  cv.width = W; cv.height = H;
+  const PAPER = '#f7f6f2', INK = '#262421';
+  const PAL = {
+    k: INK, w: '#ffffff', s: '#c68a5e', g: '#77726b', r: '#d33a2c', y: '#f0c419',
+    K: '#b39a6b', D: '#7c6845', b: '#5b3d22', n: '#2d4c8c', G: '#a9a59e', l: '#cfcac0'
+  };
+
+  // Build a sprite from rows of palette letters. White pixels on an edge become ink, so white shapes keep an outline.
+  function sprite(rows) {
+    const h = rows.length, w = Math.max(...rows.map(r => r.length));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    const at = (i, j) => { const r = rows[j]; const ch = r && r[i]; return ch && ch !== '.' ? ch : null; };
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      let ch = at(i, j); if (!ch) continue;
+      if (ch === 'w' && (!at(i - 1, j) || !at(i + 1, j) || !at(i, j - 1) || !at(i, j + 1))) ch = 'k';
+      x.fillStyle = PAL[ch]; x.fillRect(i, j, 1, 1);
+    }
+    return c;
+  }
+
+  const STU_TOP = [
+    '.....kkkk.....',
+    '....kkkkkk....',
+    'kk..kkkssss...',
+    '.kkkkkkskss...',
+    '......ssss....',
+    '.......ss.....',
+    '.....wwwwwwss.',
+    '....swwwwww...',
+    '...s.wwwwww...',
+    '.....wwwwww...',
+    '.....kkkkkk...',
+    '.....kkkkkk...',
+  ];
+  const POL_TOP = [
+    '.....DDDDD......',
+    '....DDDDDDDkk...',
+    '....kksssss.....',
+    '....ksssskss....',
+    '.....ssskkkk....',
+    '......ssss......',
+    '.....KKKKKK.....',
+    '....KKKKKKKKss..',
+    '...sKKKKKKKKK...',
+    '....KKKKKKKKK...',
+    '....bbbbybbbb...',
+    '....KKKKKKKK....',
+  ];
+  const S = {
+    runA: sprite(STU_TOP.concat([
+      '....kkk.kkk...',
+      '...kkk...kkk..',
+      '..kkk.....kkk.',
+      '.kk........kk.',
+      'gg.........gg.',
+    ])),
+    runB: sprite(STU_TOP.concat([
+      '.....kkkkk....',
+      '......kkkk....',
+      '......kk.kk...',
+      '.....kk..kk...',
+      '.....gg..ggg..',
+    ])),
+    jump: sprite(STU_TOP.concat([
+      '....kkkkkkk...',
+      '...kkk...kkk..',
+      '..kk.....kk...',
+      '.gg.....gg....',
+      '..............',
+    ])),
+    duckA: sprite([
+      '...........kkkk...',
+      '..........kkkkkk..',
+      '.kk.......kkkssss.',
+      '..kkkkkkkkkkkskss.',
+      '....wwwwwwww.sss..',
+      '...wwwwwwwwwwss...',
+      '...wwwwwwwwwww.s..',
+      '...kkkkkkkkkk.....',
+      '..kkkk....kkkk....',
+      '.kkk.......kkk....',
+      'ggg........ggg....',
+    ]),
+    duckB: sprite([
+      '...........kkkk...',
+      '..........kkkkkk..',
+      '.kk.......kkkssss.',
+      '..kkkkkkkkkkkskss.',
+      '....wwwwwwww.sss..',
+      '...wwwwwwwwwwss...',
+      '...wwwwwwwwwww.s..',
+      '...kkkkkkkkkk.....',
+      '...kkkkk.kkkk.....',
+      '....kkk...kkk.....',
+      '...ggg....ggg.....',
+    ]),
+    polA: sprite(POL_TOP.concat([
+      '...KKK...KKK....',
+      '..KKK.....KKK...',
+      '.KKK.......KK...',
+      'kkk........kkk..',
+    ])),
+    polB: sprite(POL_TOP.concat([
+      '.....KKKKK......',
+      '.....KK.KK......',
+      '.....KK.KK......',
+      '....kkk.kkk.....',
+    ])),
+    flag: sprite([
+      'kkkkkkkkkkkkkkk',
+      'kwwwwwwwwwwwwwk',
+      'kwrrrwrrrwrrrwk',
+      'kwrwwwrwwwwrwwk',
+      'kwrrrwrrwwwrwwk',
+      'kwwwrwrwwwwrwwk',
+      'kwrrrwrwwwrrrwk',
+      'kwwwwwwwwwwwwwk',
+      'kkkkkkkkkkkkkkk',
+    ]),
+    barr: sprite([
+      '.kkkkkkkkkkkkkkkk.',
+      '.kwwkkwwkkwwkkwwk.',
+      '.kkkkkkkkkkkkkkkk.',
+      '.kyyyyyyyyyyyyyyk.',
+      '.kykkkykkykkyyryk.',
+      '.kyyyyyyyyyyyyyyk.',
+      '.kkkkkkkkkkkkkkkk.',
+      '..kk..........kk..',
+      '..kk..........kk..',
+      '.kkkk........kkkk.',
+    ]),
+    wire: sprite([
+      '..kk....kk....kk....kk..',
+      '.k..k..k..k..k..k..k..k.',
+      'k....kk....kk....kk....k',
+      'k....kk....kk....kk....k',
+      '.k..k..k..k..k..k..k..k.',
+      '..kk....kk....kk....kk..',
+    ]),
+    shell: sprite([
+      '.kkkkkk',
+      'kGGGGrk',
+      'kGGGGrk',
+      '.kkkkkk',
+    ]),
+    droneA: sprite([
+      'kkkk.....kkkk',
+      '..k.......k..',
+      '.kkkkkkkkkkk.',
+      '.kGGGGGrGGGk.',
+      '..kkkkkkkkk..',
+      '....k...k....',
+    ]),
+    droneB: sprite([
+      '.kk.......kk.',
+      '..k.......k..',
+      '.kkkkkkkkkkk.',
+      '.kGGGGGGGGGk.',
+      '..kkkkkkkkk..',
+      '....k...k....',
+    ]),
+    book: sprite([
+      'kkkkkkkkk',
+      'knnnnnnnk',
+      'knnyyynnk',
+      'knnynynnk',
+      'knnyyynnk',
+      'knnnnnnnk',
+      'knyyyyynk',
+      'knnnnnnnk',
+      'knnnnnnnk',
+      'kwwwwwwwk',
+      'kkkkkkkkk',
+    ]),
+    cloud: sprite([
+      '......llll......',
+      '....ll....ll....',
+      '..lll......lll..',
+      '.l............ll',
+      'llllllllllllllll',
+    ]),
+  };
+
+  // Background: Jantar Mantar instruments and trees, pre-rendered once.
+  const PW = 440;
+  const sky = document.createElement('canvas'); sky.width = PW; sky.height = H;
+  (() => {
+    const s = sky.getContext('2d');
+    const A = '#e3dfd6', B = '#d9d3c7';
+    const ring = (cxp, cyp, R, r, col) => {
+      s.fillStyle = col;
+      for (let y = -R; y <= 0; y++) for (let x = -R; x <= R; x++) {
+        const d = x * x + y * y;
+        if (d <= R * R && d >= r * r) s.fillRect(cxp + x, cyp + y, 1, 1);
+      }
+    };
+    const tree = (x, h, r) => {
+      s.fillStyle = B; s.fillRect(x, G - h, 2, h);
+      for (let y = -r; y <= r; y++) for (let xx = -r - 2; xx <= r + 2; xx++)
+        if ((xx * xx) / ((r + 2) * (r + 2)) + (y * y) / (r * r) <= 1) s.fillRect(x + 1 + xx, G - h - r + 2 + y, 1, 1);
+    };
+    // Samrat Yantra: the giant sundial ramp, with a quadrant arc on each side
+    ring(26, G, 16, 11, A);
+    s.fillStyle = A;
+    for (let i = 0; i <= 36; i++) { const h = Math.round(i * 1.15); s.fillRect(40 + i, G - h, 1, h); }
+    s.fillRect(72, G - 49, 7, 8); s.fillRect(71, G - 50, 9, 1);
+    ring(96, G, 16, 11, A);
+    // Ram Yantra: round building with arched openings
+    s.fillStyle = A; s.fillRect(200, G - 24, 40, 24); s.fillRect(198, G - 25, 44, 2);
+    s.fillStyle = PAPER;
+    for (let k = 0; k < 6; k++) { s.fillRect(203 + k * 6, G - 19, 3, 12); s.fillRect(204 + k * 6, G - 20, 1, 1); }
+    tree(150, 14, 7); tree(168, 10, 5); tree(300, 16, 8); tree(330, 11, 6);
+    // street lamps
+    s.fillStyle = B;
+    [270, 390].forEach(x => { s.fillRect(x, G - 30, 1, 30); s.fillRect(x - 3, G - 31, 7, 1); s.fillRect(x - 3, G - 30, 1, 2); s.fillRect(x + 3, G - 30, 1, 2); });
+  })();
+
+  // Ground pebbles (deterministic)
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pebbles = Array.from({ length: 70 }, () => ({ x: Math.floor(rnd() * 600), y: G + 2 + Math.floor(rnd() * 7), w: 1 + Math.floor(rnd() * 3) }));
+
+  // DOM
+  const $ = id => document.getElementById(id);
+  const hiEl = $('hi'), scEl = $('sc'), ov = $('ov'), ovTitle = $('ovTitle'), ovSub = $('ovSub'), restartIco = $('restart'), bannerEl = $('banner');
+
+  // Physics
+  const JV = 320, GRAV = 980, CUT = 150, MAXS = 285;
+  const MSGS = ['Section 144 imposed', 'Internet suspended in your area', 'Permission to protest: denied', 'More barricades overnight', 'Jantar Mantar ahead', 'Water cannon on standby'];
+
+  let state = 'idle', speed = 120, score = 0, hi = 56, t = 0, groundX = 0, bgX = 0;
+  let pl = { y: 0, vy: 0, air: false, frame: 'runB' };
+  let pol = { x: 10, frame: 'polB' };
+  let objs = [{ kind: 'barr', x: 200, y: G - 10, w: 18, h: 10, t: 0 }], parts = [];
+  let clouds = [{ x: 60, y: 14 }, { x: 170, y: 30 }, { x: 260, y: 10 }];
+  let spawnIn = 200, caughtT = 0, overAt = 0, nextBanner = 300, lastHundred = 0, msgIdx = 0;
+  let jumpHeld = false, duckHeld = false;
+
+  try { const v = parseInt(localStorage.getItem('lathi-run-hi'), 10); if (v > hi) hi = v; } catch (e) {}
+
+  // Sound
+  let ac = null, soundOn = true;
+  function audioInit() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
+  }
+  function tone(f, d, type, vol, when, f2) {
+    if (!ac || !soundOn) return;
+    const o = ac.createOscillator(), g = ac.createGain();
+    const t0 = ac.currentTime + (when || 0);
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(f, t0);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + d);
+    g.gain.setValueAtTime(vol || 0.04, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + d + 0.02);
+  }
+  const sfx = {
+    jump: () => tone(400, 0.12, 'square', 0.035, 0, 760),
+    point: () => { tone(880, 0.07, 'square', 0.03); tone(1320, 0.12, 'square', 0.03, 0.08); },
+    hit: () => tone(160, 0.25, 'sawtooth', 0.05, 0, 60),
+    whistle: () => { for (let i = 0; i < 8; i++) tone(i % 2 ? 2350 : 2800, 0.06, 'sine', 0.045, 0.12 + i * 0.06); },
+    book: () => { [660, 880, 1100].forEach((f, i) => tone(f, 0.08, 'square', 0.03, i * 0.07)); },
+  };
+
+  const pad = (n) => String(Math.floor(n)).padStart(5, '0');
+  let lastSc = -1, lastHi = -1;
+  function hud() {
+    const s = Math.floor(score);
+    if (s !== lastSc) { scEl.textContent = pad(s); lastSc = s; }
+    if (hi !== lastHi) { hiEl.textContent = 'HI ' + pad(hi); lastHi = hi; }
+  }
+  function flashScore() { scEl.classList.remove('blink'); void scEl.offsetWidth; scEl.classList.add('blink'); }
+  let bannerTimer = 0;
+  function banner(text) {
+    bannerEl.hidden = true; void bannerEl.offsetWidth;
+    bannerEl.textContent = text; bannerEl.hidden = false;
+    clearTimeout(bannerTimer); bannerTimer = setTimeout(() => { bannerEl.hidden = true; }, 2200);
+  }
+
+  function begin() {
+    state = 'run'; speed = 120; score = 0; t = 0;
+    objs = [{ kind: 'barr', x: 230, y: G - 10, w: 18, h: 10, t: 0 }]; parts = [];
+    pl = { y: 0, vy: -JV * 0.75, air: true, frame: 'jump' };
+    pol.x = 10; spawnIn = 230; nextBanner = 300; lastHundred = 0; msgIdx = 0;
+    ov.hidden = true; bannerEl.hidden = true; lastSc = -1;
+    sfx.jump();
+  }
+
+  function caught() {
+    state = 'caught'; caughtT = 0;
+    sfx.hit(); sfx.whistle();
+    const s = Math.floor(score);
+    if (s > hi) { hi = s; try { localStorage.setItem('lathi-run-hi', String(hi)); } catch (e) {} }
+  }
+
+  function showOver() {
+    ovTitle.textContent = 'DETAINED';
+    ovSub.textContent = 'You got ' + Math.floor(score) + ' m closer to Jantar Mantar. Tap to march again.';
+    restartIco.removeAttribute('hidden');
+    ov.hidden = false;
+  }
+
+  const pick = (opts) => {
+    const total = opts.reduce((a, o) => a + o[1], 0); let r = Math.random() * total;
+    for (const o of opts) { if ((r -= o[1]) <= 0) return o[0]; }
+    return opts[0][0];
+  };
+
+  function spawn() {
+    const s = score, x = W + 4;
+    const opts = [['barr', 3]];
+    if (s > 60) opts.push(['wire', 2]);
+    if (s > 180) opts.push(['barr2', 2]);
+    if (s > 320) opts.push(['tall', 1.5]);
+    if (s > 30) opts.push(['shellHi', 2.2]);
+    if (s > 140) opts.push(['shellLo', 1]);
+    if (s > 420) opts.push(['droneMid', 1.3], ['droneHigh', 1]);
+    const k = pick(opts);
+    let o;
+    switch (k) {
+      case 'barr': o = { kind: 'barr', x, y: G - 10, w: 18, h: 10 }; break;
+      case 'barr2': o = { kind: 'barr2', x, y: G - 10, w: 36, h: 10 }; break;
+      case 'tall': o = { kind: 'tall', x, y: G - 20, w: 18, h: 20 }; break;
+      case 'wire': o = { kind: 'wire', x, y: G - 6, w: 24, h: 6 }; break;
+      case 'shellHi': o = { kind: 'shell', x, y: G - 18, w: 7, h: 4, extra: 30 }; break;
+      case 'shellLo': o = { kind: 'shell', x, y: G - 6, w: 7, h: 4, extra: 30 }; break;
+      case 'droneMid': o = { kind: 'drone', x, y: G - 20, w: 13, h: 6, extra: 15 }; break;
+      case 'droneHigh': o = { kind: 'drone', x, y: G - 36, w: 13, h: 6, extra: 15 }; break;
+    }
+    o.t = 0; objs.push(o);
+    const gap = speed * (0.75 + Math.random() * 0.9) + 34;
+    spawnIn = o.w + gap;
+    if (s > 40 && Math.random() < 0.14) objs.push({ kind: 'book', x: x + o.w + gap / 2, y: G - 36, w: 9, h: 11, t: 0 });
+  }
+
+  function playerBox() {
+    if (!pl.air && duckHeld) return { x: PX + 3, y: G - 10, w: 13, h: 10 };
+    return { x: PX + 4, y: G - 17 + pl.y + 1, w: 7, h: 16 };
+  }
+  const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  function update(dt) {
+    t += dt;
+    if (state === 'run') {
+      speed = Math.min(MAXS, 120 + score * 0.1);
+      const dx = speed * dt;
+      groundX += dx; bgX += dx;
+      score += dx * 0.09;
+      pol.x += (10 + Math.sin(t * 1.7) * 3 - pol.x) * Math.min(1, dt * 2);
+
+      if (pl.air) {
+        if (!jumpHeld && pl.vy < -CUT) pl.vy = -CUT;
+        pl.vy += GRAV * (duckHeld ? 2.6 : 1) * dt;
+        pl.y += pl.vy * dt;
+        if (pl.y >= 0) { pl.y = 0; pl.vy = 0; pl.air = false; }
+      }
+      const step = Math.floor(t * (6 + speed / 25)) % 2;
+      pl.frame = pl.air ? 'jump' : duckHeld ? (step ? 'duckA' : 'duckB') : (step ? 'runA' : 'runB');
+      pol.frame = step ? 'polB' : 'polA';
+
+      spawnIn -= dx;
+      if (spawnIn <= 0) spawn();
+      for (const o of objs) {
+        o.x -= (speed + (o.extra || 0)) * dt; o.t += dt;
+        if (o.kind === 'shell' && Math.random() < dt * 40)
+          parts.push({ x: o.x + o.w, y: o.y + 1 + Math.random() * 2, r: 1, life: 0.55, max: 0.55 });
+      }
+      objs = objs.filter(o => o.x + o.w > -12 && !o.gone);
+
+      const pb = playerBox();
+      for (const o of objs) {
+        const ob = { x: o.x + 1, y: o.y + 1, w: o.w - 2, h: o.h - 2 };
+        if (!hit(pb, ob)) continue;
+        if (o.kind === 'book') { o.gone = true; score += 25; banner('Preamble recovered +25'); sfx.book(); }
+        else { caught(); break; }
+      }
+
+      const hund = Math.floor(score / 100);
+      if (hund > lastHundred) { lastHundred = hund; sfx.point(); flashScore(); }
+      if (score >= nextBanner && state === 'run') { banner(MSGS[msgIdx++ % MSGS.length]); nextBanner += 400; }
+      if (score > hi) hi = Math.floor(score);
+      for (const c of clouds) { c.x -= speed * 0.12 * dt; if (c.x < -20) { c.x = W + Math.random() * 120; c.y = 8 + Math.random() * 28; } }
+    } else if (state === 'caught') {
+      caughtT += dt;
+      pol.x += (PX - 12 - pol.x) * Math.min(1, dt * 7);
+      pol.frame = caughtT < 0.5 ? (Math.floor(t * 16) % 2 ? 'polA' : 'polB') : 'polB';
+      if (caughtT > 0.85) { state = 'over'; overAt = performance.now(); showOver(); }
+    }
+    for (const p of parts) { p.life -= dt; p.r += dt * 4; if (state === 'run') p.x -= speed * 0.25 * dt; }
+    parts = parts.filter(p => p.life > 0);
+  }
+
+  function lathi(hx, hy, deg, len) {
+    const a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    cx.fillStyle = '#9c6b2f';
+    for (let i = 0; i <= len; i++) cx.fillRect(Math.round(hx + ca * i), Math.round(hy + sa * i), 1, 1);
+    cx.fillStyle = INK; cx.fillRect(Math.round(hx + ca * len), Math.round(hy + sa * len), 1, 1);
+  }
+
+  function drawFlag(fx, fy, phase) {
+    for (let c = 0; c < 15; c++) {
+      const d = 14 - c;
+      const off = Math.round(Math.sin(phase - d * 0.55) * (d / 14) * 1.6);
+      cx.drawImage(S.flag, c, 0, 1, 9, fx + c, fy + off, 1, 9);
+    }
+  }
+
+  function draw() {
+    cx.fillStyle = PAPER; cx.fillRect(0, 0, W, H);
+    for (const c of clouds) cx.drawImage(S.cloud, Math.round(c.x), Math.round(c.y));
+    const so = -Math.floor((bgX * 0.25) % PW);
+    cx.drawImage(sky, so, 0); cx.drawImage(sky, so + PW, 0);
+
+    cx.fillStyle = INK; cx.fillRect(0, G, W, 1);
+    const go = Math.floor(groundX % 600);
+    for (const p of pebbles) {
+      let x = p.x - go; if (x < -4) x += 600;
+      if (x < W) cx.fillRect(x, p.y, p.w, 1);
+    }
+
+    for (const o of objs) {
+      const x = Math.round(o.x), y = Math.round(o.y);
+      switch (o.kind) {
+        case 'barr': cx.drawImage(S.barr, x, y); break;
+        case 'barr2': cx.drawImage(S.barr, x, y); cx.drawImage(S.barr, x + 18, y); break;
+        case 'tall': cx.drawImage(S.barr, x, y); cx.drawImage(S.barr, x, y + 10); break;
+        case 'wire': cx.drawImage(S.wire, x, y); break;
+        case 'shell': cx.drawImage(S.shell, x, y); break;
+        case 'drone': cx.drawImage(Math.floor(o.t * 20) % 2 ? S.droneA : S.droneB, x, y); break;
+        case 'book': cx.drawImage(S.book, x, y + Math.round(Math.sin(o.t * 5))); break;
+      }
+    }
+    for (const p of parts) {
+      cx.fillStyle = 'rgba(150,146,140,' + (p.life / p.max * 0.6).toFixed(2) + ')';
+      const r = Math.round(p.r);
+      cx.fillRect(Math.round(p.x - r), Math.round(p.y - r), r * 2, r * 2);
+    }
+
+    // Policeman with lathi
+    const qx = Math.round(pol.x), qy = G - 16;
+    cx.drawImage(S[pol.frame], qx, qy);
+    let ang = pol.frame === 'polA' ? -55 : -72;
+    if (state === 'caught' || state === 'over') ang = -100;
+    if (state === 'idle') ang = -80;
+    lathi(qx + 13, qy + 7, ang, 13);
+
+    // Student with flag
+    const phase = state === 'run' ? t * 14 : t * 4;
+    const img = S[pl.frame];
+    if (pl.frame === 'duckA' || pl.frame === 'duckB') {
+      const top = G - 11;
+      drawFlag(PX - 17, top + 1, phase);
+      cx.fillStyle = INK; cx.fillRect(PX - 3, top + 1, 18, 1);
+      cx.drawImage(img, PX, top);
+    } else {
+      const top = G - 17 + Math.round(pl.y);
+      cx.fillStyle = INK; cx.fillRect(PX + 12, top - 14, 1, 20);
+      drawFlag(PX - 3, top - 14, phase);
+      cx.drawImage(img, PX, top);
+    }
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (state !== 'over') update(dt); else t += dt;
+    draw(); hud();
+    requestAnimationFrame(loop);
+  }
+
+  // Input
+  function pressJump() {
+    jumpHeld = true; audioInit();
+    if (state === 'idle') { begin(); return; }
+    if (state === 'over') { if (performance.now() - overAt > 450) begin(); return; }
+    if (state === 'run' && !pl.air && !duckHeld) { pl.vy = -JV; pl.air = true; sfx.jump(); }
+  }
+  const releaseJump = () => { jumpHeld = false; };
+  const pressDuck = () => { duckHeld = true; audioInit(); };
+  const releaseDuck = () => { duckHeld = false; };
+
+  const stage = $('stage');
+  stage.addEventListener('pointerdown', e => { e.preventDefault(); pressJump(); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => stage.addEventListener(ev, releaseJump));
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+
+  function bindPad(el, down, up) {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('down'); down(); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => { el.classList.remove('down'); up(); }));
+    el.addEventListener('contextmenu', e => e.preventDefault());
+  }
+  bindPad($('bJump'), pressJump, releaseJump);
+  bindPad($('bDuck'), pressDuck, releaseDuck);
+
+  const bSnd = $('bSnd');
+  bSnd.addEventListener('click', () => {
+    soundOn = !soundOn;
+    bSnd.setAttribute('aria-pressed', String(soundOn));
+    bSnd.innerHTML = 'Sound<br>' + (soundOn ? 'on' : 'off');
+    if (soundOn) audioInit();
+  });
+
+  const JUMP_KEYS = ['Space', 'ArrowUp', 'KeyW'], DUCK_KEYS = ['ArrowDown', 'KeyS'];
+  window.addEventListener('keydown', e => {
+    if (e.target === bSnd && (e.code === 'Space' || e.code === 'Enter')) return;
+    if (JUMP_KEYS.includes(e.code)) { e.preventDefault(); if (!e.repeat) pressJump(); }
+    else if (DUCK_KEYS.includes(e.code)) { e.preventDefault(); pressDuck(); }
+  });
+  window.addEventListener('keyup', e => {
+    if (JUMP_KEYS.includes(e.code)) releaseJump();
+    else if (DUCK_KEYS.includes(e.code)) releaseDuck();
+  });
+  window.addEventListener('blur', () => { jumpHeld = false; duckHeld = false; });
+
+  function start(data) {
+    if (data && data.hi > hi) hi = data.hi;
+    hud(); draw();
+    requestAnimationFrame(t0 => { last = t0; requestAnimationFrame(loop); });
+  }
+  const hot = window.claude && window.claude.hot;
+  if (hot && typeof hot.snapshot === 'function') { try { hot.snapshot(() => ({ hi })); } catch (e) {} }
+  if (hot && typeof hot.ready === 'function') hot.ready(start); else start((hot && hot.data) || {});
+})();
+</script>
+</body>
+</html>
